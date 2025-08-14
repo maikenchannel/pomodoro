@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apple風ポモドーロタイマー</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        
+        :root {
+            --bg-color: #f5f5f7;
+            --text-color: #1d1d1f;
+            --container-bg: #ffffff;
+            --circle-bg: #e2e2e7;
+            --progress-color-work: #007aff;
+            --progress-color-break: #34c759;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .dark {
+            --bg-color: #1c1c1e;
+            --text-color: #f5f5f7;
+            --container-bg: #2c2c2e;
+            --circle-bg: #48484a;
+            --progress-color-work: #0a84ff;
+            --progress-color-break: #30d158;
+            --shadow-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            transition: background-color 0.3s ease;
+        }
+
+        .main-content {
+            background-color: var(--container-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .timer-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+        }
+
+        .timer-circle {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 10px solid var(--circle-bg);
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+            transition: border-color 0.3s ease;
+        }
+        
+        .timer-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 10px solid transparent;
+            border-top-color: var(--progress-color-work);
+            transform: rotate(-90deg);
+            transition: border-top-color 0.5s ease-in-out;
+        }
+
+        .timer-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .hamburger-menu {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+
+        .hamburger-menu-button {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            background-color: var(--container-bg);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            cursor: pointer;
+            padding: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .hamburger-menu-button span {
+            display: block;
+            height: 2px;
+            width: 100%;
+            background: var(--text-color);
+            border-radius: 2px;
+            transition: background-color 0.3s ease;
+        }
+
+        .settings-panel {
+            position: fixed;
+            top: 0;
+            right: -300px; /* Hidden by default */
+            width: 300px;
+            height: 100vh;
+            background: var(--container-bg);
+            box-shadow: -4px 0 10px var(--shadow-color);
+            transition: right 0.3s ease-in-out;
+            z-index: 99;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .settings-panel.open {
+            right: 0;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 28px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #007aff;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+    </style>
+</head>
+<body>
+    <!-- Main content container -->
+    <div class="flex flex-col items-center justify-center">
+        <!-- Title -->
+        <h1 class="text-3xl font-bold mb-10 text-center">ポモドーロタイマー</h1>
+
+        <!-- Timer display -->
+        <div class="timer-container">
+            <svg class="timer-circle" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45"></circle>
+            </svg>
+            <svg class="timer-progress" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" stroke-dasharray="282.74" stroke-dashoffset="282.74"></circle>
+            </svg>
+            <div class="timer-content">
+                <div id="timerDisplay" class="text-6xl font-bold">25:00</div>
+                <div id="statusMessage" class="text-lg text-gray-500 mt-2">作業時間</div>
+            </div>
+        </div>
+
+        <!-- Control buttons -->
+        <div class="flex flex-col items-center mt-8 space-y-4">
+            <div class="flex space-x-4">
+                <button id="startButton" class="w-24 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-lg shadow-md transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    開始
+                </button>
+                <button id="resetButton" class="w-24 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 rounded-lg shadow-md transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-400" disabled>
+                    リセット
+                </button>
+            </div>
+            <button id="pauseButton" class="w-40 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg shadow-md transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-400 hidden" disabled>
+                一時停止
+            </button>
+        </div>
+    </div>
+
+    <!-- Hamburger menu button -->
+    <div class="hamburger-menu">
+        <button id="hamburgerButton" class="hamburger-menu-button">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+    </div>
+
+    <!-- Settings panel -->
+    <div id="settingsPanel" class="settings-panel">
+        <h2 class="text-xl font-semibold mb-4">設定</h2>
+        <div class="flex flex-col gap-4">
+            <div>
+                <label for="workTime" class="text-base font-medium mb-2 block">作業時間 (分)</label>
+                <input type="number" id="workTime" value="25" min="1" class="w-full p-2 text-center border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label for="breakTime" class="text-base font-medium mb-2 block">休憩時間 (分)</label>
+                <input type="number" id="breakTime" value="5" min="1" class="w-full p-2 text-center border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <button id="applySettingsButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 rounded-lg shadow-md transition duration-300 ease-in-out focus:outline-none focus:ring-ring-blue-400">
+                設定を適用
+            </button>
+            
+            <hr class="my-4 border-gray-200 dark:border-gray-700">
+
+            <div class="flex justify-between items-center">
+                <span class="text-base font-medium">ダークモード</span>
+                <label class="switch">
+                    <input type="checkbox" id="darkModeSwitch">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript logic -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const timerDisplay = document.getElementById('timerDisplay');
+            const statusMessage = document.getElementById('statusMessage');
+            const startButton = document.getElementById('startButton');
+            const resetButton = document.getElementById('resetButton');
+            const workTimeInput = document.getElementById('workTime');
+            const breakTimeInput = document.getElementById('breakTime');
+            const applySettingsButton = document.getElementById('applySettingsButton');
+            const hamburgerButton = document.getElementById('hamburgerButton');
+            const settingsPanel = document.getElementById('settingsPanel');
+            const timerProgress = document.querySelector('.timer-progress circle');
+            const darkModeSwitch = document.getElementById('darkModeSwitch');
+
+            let workMinutes = 25;
+            let breakMinutes = 5;
+            let timeLeft = workMinutes * 60;
+            let isPaused = true;
+            let isWorkTime = true;
+            let timerInterval = null;
+            const circumference = 2 * Math.PI * 45;
+
+            // Load dark mode preference from localStorage
+            const savedMode = localStorage.getItem('darkMode');
+            if (savedMode === 'true') {
+                document.documentElement.classList.add('dark');
+                darkModeSwitch.checked = true;
+            }
+
+            // Update timer display and progress circle
+            function updateDisplay() {
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                const totalTime = (isWorkTime ? workMinutes : breakMinutes) * 60;
+                const progress = timeLeft / totalTime;
+                const offset = circumference * (1 - progress);
+                timerProgress.style.strokeDashoffset = offset;
+            }
+
+            // Reset the timer
+            function resetTimer() {
+                clearInterval(timerInterval);
+                isPaused = true;
+                timeLeft = (isWorkTime ? workMinutes : breakMinutes) * 60;
+                updateDisplay();
+                startButton.textContent = '開始';
+                startButton.disabled = false;
+                resetButton.disabled = true;
+                timerProgress.style.strokeDashoffset = circumference;
+                timerProgress.style.borderTopColor = isWorkTime ? 'var(--progress-color-work)' : 'var(--progress-color-break)';
+            }
+
+            // Start countdown
+            function startTimer() {
+                isPaused = false;
+                startButton.textContent = '一時停止';
+                startButton.disabled = false;
+                resetButton.disabled = false;
+                
+                timerInterval = setInterval(() => {
+                    if (!isPaused) {
+                        timeLeft--;
+                        updateDisplay();
+
+                        if (timeLeft <= 0) {
+                            clearInterval(timerInterval);
+                            isWorkTime = !isWorkTime;
+                            timeLeft = (isWorkTime ? workMinutes : breakMinutes) * 60;
+                            statusMessage.textContent = isWorkTime ? '作業時間' : '休憩時間';
+                            timerProgress.style.borderTopColor = isWorkTime ? 'var(--progress-color-work)' : 'var(--progress-color-break)';
+                            
+                            const audio = new Audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3');
+                            audio.play().catch(e => console.error("Audio playback failed:", e));
+
+                            startTimer();
+                        }
+                    }
+                }, 1000);
+            }
+
+            // Event Listeners
+            startButton.addEventListener('click', () => {
+                if (isPaused) {
+                    startButton.textContent = '一時停止';
+                    startTimer();
+                } else {
+                    isPaused = true;
+                    startButton.textContent = '再開';
+                    clearInterval(timerInterval);
+                }
+            });
+
+            resetButton.addEventListener('click', () => {
+                resetTimer();
+            });
+
+            hamburgerButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                settingsPanel.classList.toggle('open');
+            });
+
+            document.addEventListener('click', (event) => {
+                if (!settingsPanel.contains(event.target) && !hamburgerButton.contains(event.target)) {
+                    settingsPanel.classList.remove('open');
+                }
+            });
+
+            applySettingsButton.addEventListener('click', () => {
+                const newWorkMinutes = parseInt(workTimeInput.value);
+                const newBreakMinutes = parseInt(breakTimeInput.value);
+
+                if (!isNaN(newWorkMinutes) && newWorkMinutes > 0 && !isNaN(newBreakMinutes) && newBreakMinutes > 0) {
+                    workMinutes = newWorkMinutes;
+                    breakMinutes = newBreakMinutes;
+                    resetTimer();
+                    settingsPanel.classList.remove('open');
+                } else {
+                    const alertBox = document.createElement('div');
+                    alertBox.textContent = '無効な時間です。1分以上の整数を入力してください。';
+                    alertBox.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-red-500 text-white py-2 px-4 rounded-lg shadow-md z-50';
+                    document.body.appendChild(alertBox);
+                    setTimeout(() => {
+                        alertBox.remove();
+                    }, 3000);
+                }
+            });
+
+            darkModeSwitch.addEventListener('change', () => {
+                if (darkModeSwitch.checked) {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('darkMode', 'true');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('darkMode', 'false');
+                }
+            });
+
+            // Initial setup
+            updateDisplay();
+            timerProgress.style.strokeDashoffset = circumference;
+            timerProgress.style.strokeDasharray = circumference;
+        });
+    </script>
+</body>
+</html>
+
